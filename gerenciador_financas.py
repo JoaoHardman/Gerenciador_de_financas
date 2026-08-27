@@ -1,11 +1,18 @@
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
-
+class Movimentacao(BaseModel):
+     descricao: str
+     valor: float
+     tipo: str
+     categoria: str
+     
 movimentacoes = {}
 proximo_id = 1
 
-@app.get("/movimentacoes")
+@app.get("/get")
 def get_movimentacoes():
 
     if not movimentacoes:
@@ -13,35 +20,35 @@ def get_movimentacoes():
 
     return {"movimentacoes": movimentacoes}
 
-@app.post("/movimentacoes")
-def post_movimentacao(descricao: str, valor: float, tipo: str, categoria: str):
+@app.post("/post")
+def post_movimentacao(movimentacao: Movimentacao):
 
     global proximo_id
-    if valor <= 0:
+    if movimentacao.valor <= 0:
         raise HTTPException(status_code=400, detail="O valor deve ser maior que zero")
-    if tipo not in ["receita", "despesa"]:
+    if movimentacao.tipo not in ["receita", "despesa"]:
         raise HTTPException(status_code=400, detail="O tipo deve ser 'receita' ou 'despesa'")
-    if not descricao.strip():
+    if not movimentacao.descricao.strip():
         raise HTTPException(status_code=400, detail="A descrição não pode estar vazia")
-    movimentacoes[proximo_id] = {"descricao": descricao, "valor": valor, "tipo": tipo, "categoria": categoria}
+    movimentacoes[proximo_id] = movimentacao.model_dump()
     proximo_id += 1
     return {"message": "Movimentação cadastrada com sucesso"}
 
-@app.put("/movimentacoes/{id}")
-def put_movimentacao(id: int, descricao: str, valor: float, tipo: str, categoria: str):
+@app.put("/put/{id}")
+def put_movimentacao(id: int, movimentacao: Movimentacao):
 
     if id not in movimentacoes:
         raise HTTPException(status_code=404, detail="Movimentação não encontrada")
-    if valor <= 0:
-            raise HTTPException(status_code=400, detail="O valor deve ser maior que zero")
-    if tipo not in ["receita", "despesa"]:
-            raise HTTPException(status_code=400, detail="O tipo deve ser 'receita' ou 'despesa'")
-    if not descricao.strip():
-            raise HTTPException(status_code=400, detail="A descrição não pode estar vazia")
-    movimentacoes[id] = {"descricao": descricao, "valor": valor, "tipo": tipo, "categoria": categoria}
+    if movimentacao.valor <= 0:
+        raise HTTPException(status_code=400, detail="O valor deve ser maior que zero")
+    if movimentacao.tipo not in ["receita", "despesa"]:
+        raise HTTPException(status_code=400, detail="O tipo deve ser 'receita' ou 'despesa'")
+    if not movimentacao.descricao.strip():
+        raise HTTPException(status_code=400, detail="A descrição não pode estar vazia")
+    movimentacoes[id] = movimentacao.model_dump()
     return {"message": "Movimentação atualizada com sucesso"}
 
-@app.delete("/movimentacoes/{id}")
+@app.delete("/delete/{id}")
 def delete_movimentacao(id: int):
 
     if id not in movimentacoes:

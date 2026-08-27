@@ -2,7 +2,13 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
-app = FastAPI()
+app = FastAPI(title="API Gerenciador de finanças", 
+    description="API para gerenciamento financeiro pessoal", 
+    version="1.0.0", 
+    contact={"name": "João Pedro",
+             "url": "https://github.com/JoaoHardman",
+             "email": "jp.hardman.l@gmail.com"})
+
 class Movimentacao(BaseModel):
      descricao: str
      valor: float

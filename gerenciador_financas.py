@@ -12,7 +12,7 @@ class Movimentacao(BaseModel):
 movimentacoes = {}
 proximo_id = 1
 
-@app.get("/get")
+@app.get("/movimentacoes")
 def get_movimentacoes():
 
     if not movimentacoes:
@@ -20,7 +20,7 @@ def get_movimentacoes():
 
     return {"movimentacoes": movimentacoes}
 
-@app.post("/post")
+@app.post("/movimentacoes")
 def post_movimentacao(movimentacao: Movimentacao):
 
     global proximo_id
@@ -34,7 +34,7 @@ def post_movimentacao(movimentacao: Movimentacao):
     proximo_id += 1
     return {"message": "Movimentação cadastrada com sucesso"}
 
-@app.put("/put/{id}")
+@app.put("/movimentacoes/{id}")
 def put_movimentacao(id: int, movimentacao: Movimentacao):
 
     if id not in movimentacoes:
@@ -48,7 +48,7 @@ def put_movimentacao(id: int, movimentacao: Movimentacao):
     movimentacoes[id] = movimentacao.model_dump()
     return {"message": "Movimentação atualizada com sucesso"}
 
-@app.delete("/delete/{id}")
+@app.delete("/movimentacoes/{id}")
 def delete_movimentacao(id: int):
 
     if id not in movimentacoes:

@@ -22,11 +22,14 @@ def post_movimentacao(descricao: str, valor: float, tipo: str, categoria: str):
     return {"message": "Movimentação cadastrada com sucesso"}
 
 @app.put("/movimentacoes/{id}")
-def put_movimentacao(id: int, valor: float):
+def put_movimentacao(id: int, descricao: str, valor: float, tipo: str, categoria: str):
 
     if id not in movimentacoes:
         raise HTTPException(status_code=404, detail="Movimentação não encontrada")
+    movimentacoes[id]["descricao"] = descricao
     movimentacoes[id]["valor"] = valor
+    movimentacoes[id]["tipo"] = tipo
+    movimentacoes[id]["categoria"] = categoria
     return {"message": "Movimentação atualizada com sucesso"}
 
 @app.delete("/movimentacoes/{id}")

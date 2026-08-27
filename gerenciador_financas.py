@@ -2,34 +2,37 @@ from fastapi import FastAPI, HTTPException
 
 app = FastAPI()
 
-tarefas = {}
+movimentacoes = {}
+proximo_id = 1
 
-@app.get("/tarefas")
-def get_tarefas():
-    if not tarefas:
-        return {'message': 'Não existem tarefas cadastradas'}
-    else:
-        return {'tarefas': tarefas}
+@app.get("/movimentacoes")
+def get_movimentacoes():
 
-@app.post("/tarefas")
-def post_tarefas(nome: str, descricao: str):
-    if nome in tarefas:
-        raise HTTPException(status_code=400, detail="Tarefa já cadastrada")
-    else:
-        tarefas[nome] = {'descricao': descricao, 'status': False}
-        return {'message': 'Tarefa adicionada com sucesso'}
+    if not movimentacoes:
+        raise HTTPException(status_code=404, detail='Sem movimentações cadastradas!')
 
-@app.put("/tarefas/{nome}")
-def put_tarefas(nome: str, status: bool):
-    if nome not in tarefas:
-        raise HTTPException(status_code=404, detail='Tarefa não cadastrada!')
-    else:
-        tarefas[nome]["status"] = status
-        return {'message': 'Tarefa atualizada com sucesso!'}
+    return {"movimentacoes": movimentacoes}
 
-@app.delete("/tarefas/{nome}")
-def delete_tarefas(nome):
-    if nome not in tarefas:
-        raise HTTPException(status_code=404, detail='Tarefa não cadastrada')
-    del tarefas[nome]
-    return {'message': 'Tarefa deletada com sucesso'}
+@app.post("/movimentacoes")
+def post_movimentacao(descricao: str, valor: float, tipo: str, categoria: str):
+
+    global proximo_id
+    movimentacoes[proximo_id] = {"descricao": descricao, "valor": valor, "tipo": tipo, "categoria": categoria}
+    proximo_id += 1
+    return {"message": "Movimentação cadastrada com sucesso"}
+
+@app.put("/movimentacoes/{id}")
+def put_movimentacao(id: int, valor: float):
+
+    if id not in movimentacoes:
+        raise HTTPException(status_code=404, detail="Movimentação não encontrada")
+    movimentacoes[id]["valor"] = valor
+    return {"message": "Movimentação atualizada com sucesso"}
+
+@app.delete("/movimentacoes/{id}")
+def delete_movimentacao(id: int):
+
+    if id not in movimentacoes:
+        raise HTTPException(status_code=404, detail="Movimentação não encontrada")
+    del movimentacoes[id]
+    return {"message": "Movimentação removida com sucesso"}

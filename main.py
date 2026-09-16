@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import sessionmaker, declarative_base
+import os
 
 Base = declarative_base()
 engine = create_engine("sqlite:///./financas.db")
@@ -18,8 +19,8 @@ app = FastAPI(title="API Gerenciador de finanças",
 
 security = HTTPBasic()
 
-user_correto = "admin"
-senha_correta = "admin"
+user_correto = os.getenv("user_correto")
+senha_correta = os.getenv("senha_correta")
 
 def session_db():
     db = SessionLocal()
@@ -32,7 +33,7 @@ def autenticar(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username != user_correto or credentials.password != senha_correta:
         raise HTTPException(status_code=401, detail="Usuário ou senha incorretos", headers={"WWW-Authenticate": "Basic"})
 
-class movimentacaoDB(Base):
+class MovimentacaoDB(Base):
     __tablename__ = "movimentacoes"
     id = Column(Integer, primary_key=True, index=True)
     descricao = Column(String, index=True)
@@ -44,7 +45,7 @@ Base.metadata.create_all(bind=engine)
 
 class Movimentacao(BaseModel):
      descricao: str
-     valor: float
+     valor: float = Field(gt=0, description="Valor da movimentação deve ser maior que zero")
      tipo: str
      categoria: str
      
@@ -53,15 +54,17 @@ def get_movimentacoes(page: int = 1, limit: int = 10, db = Depends(session_db), 
     if page < 1 or limit < 1:
         raise HTTPException(status_code=400, detail="Página e limite devem ser maiores que zero")
 
-    movimentacoes = db.query(movimentacaoDB).offset((page - 1) * limit).limit(limit).all()
+    movimentacoes = db.query(MovimentacaoDB).offset((page - 1) * limit).limit(limit).all()
     if not movimentacoes:
         raise HTTPException(status_code=404, detail="Nenhuma movimentação encontrada")
-    total_movimentacoes = db.query(movimentacaoDB).count()
+    total_movimentacoes = db.query(MovimentacaoDB).count()
     return {"movimentacoes": [{"id": m.id, "descricao": m.descricao, "valor": m.valor, "tipo": m.tipo, "categoria": m.categoria} for m in movimentacoes], "page": page, "limit": limit, "total": total_movimentacoes}
 
 @app.post("/movimentacoes")
 def post_movimentacao(movimentacao: Movimentacao, credentials: HTTPBasicCredentials = Depends(security), db = Depends(session_db)):
-    movimentacao_db = movimentacaoDB(descricao=movimentacao.descricao, valor=movimentacao.valor, tipo=movimentacao.tipo, categoria=movimentacao.categoria)
+    movimentacao_db = MovimentacaoDB(descricao=movimentacao.descricao, valor=movimentacao.valor, tipo=movimentacao.tipo, categoria=movimentacao.categoria)
+    if movimentacao.tipo.lower() not in ["receita", "despesa"]:
+        raise HTTPException(status_code=400, detail="Tipo deve ser 'receita' ou 'despesa'")
     db.add(movimentacao_db)
     db.commit()
     db.refresh(movimentacao_db)
@@ -70,10 +73,10 @@ def post_movimentacao(movimentacao: Movimentacao, credentials: HTTPBasicCredenti
 @app.put("/movimentacoes/{id}")
 def put_movimentacao(id: int, movimentacao: Movimentacao, credentials: HTTPBasicCredentials = Depends(security), db = Depends(session_db)):
 
-    movimentacao_db = db.query(movimentacaoDB).filter(movimentacaoDB.id == id).first()
+    movimentacao_db = db.query(MovimentacaoDB).filter(MovimentacaoDB.id == id).first()
     if not movimentacao_db:
         raise HTTPException(status_code=404, detail="Movimentação não encontrada")
-    db.query(movimentacaoDB).filter(movimentacaoDB.id == id).update({
+    db.query(MovimentacaoDB).filter(MovimentacaoDB.id == id).update({
         "descricao": movimentacao.descricao,
         "valor": movimentacao.valor,
         "tipo": movimentacao.tipo,
@@ -85,7 +88,7 @@ def put_movimentacao(id: int, movimentacao: Movimentacao, credentials: HTTPBasic
 @app.delete("/movimentacoes/{id}")
 def delete_movimentacao(id: int, credentials: HTTPBasicCredentials = Depends(security), db = Depends(session_db)):
 
-    movimentacao_db = db.query(movimentacaoDB).filter(movimentacaoDB.id == id).first()
+    movimentacao_db = db.query(MovimentacaoDB).filter(MovimentacaoDB.id == id).first()
     if not movimentacao_db:
         raise HTTPException(status_code=404, detail="Movimentação não encontrada")
     db.delete(movimentacao_db)

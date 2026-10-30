@@ -3,7 +3,14 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import sessionmaker, declarative_base
+from dotenv import load_dotenv
+from typing import Literal
+from pathlib import Path
 import os
+import secrets
+
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
 
 Base = declarative_base()
 engine = create_engine("sqlite:///./financas.db")
@@ -21,6 +28,8 @@ security = HTTPBasic()
 
 user_correto = os.getenv("user_correto")
 senha_correta = os.getenv("senha_correta")
+if not user_correto or not senha_correta:
+    raise RuntimeError("As credenciais de autenticação não foram configuradas.")
 
 def session_db():
     db = SessionLocal()
@@ -30,8 +39,12 @@ def session_db():
         db.close()
 
 def autenticar(credentials: HTTPBasicCredentials = Depends(security)):
-    if credentials.username != user_correto or credentials.password != senha_correta:
+    usuario_valido = secrets.compare_digest(credentials.username.encode("utf-8"), user_correto.encode("utf-8"))
+    senha_valida = secrets.compare_digest(
+        credentials.password.encode("utf-8"), senha_correta.encode("utf-8"))
+    if not (usuario_valido and senha_valida):
         raise HTTPException(status_code=401, detail="Usuário ou senha incorretos", headers={"WWW-Authenticate": "Basic"})
+    return credentials.username
 
 class MovimentacaoDB(Base):
     __tablename__ = "movimentacoes"
@@ -59,11 +72,8 @@ def get_movimentacoes(page: int = 1, limit: int = 10, db = Depends(session_db), 
     return {"movimentacoes": [{"id": m.id, "descricao": m.descricao, "valor": m.valor, "tipo": m.tipo, "categoria": m.categoria} for m in movimentacoes], "page": page, "limit": limit, "total": total_movimentacoes}
 
 @app.post("/movimentacoes")
-def post_movimentacao(movimentacao: Movimentacao, credentials = Depends(autenticar), db = Depends(session_db)):
-    tipo = movimentacao.tipo.strip().lower()
-    if tipo not in ["receita", "despesa"]:
-        raise HTTPException(status_code=400, detail="Tipo deve ser 'receita' ou 'despesa'")
-    movimentacao_db = MovimentacaoDB(descricao=movimentacao.descricao, valor=movimentacao.valor, tipo=tipo, categoria=movimentacao.categoria)
+def post_movimentacao(movimentacao: Movimentacao, credentials=Depends(autenticar), db=Depends(session_db)):
+    movimentacao_db = MovimentacaoDB(descricao=movimentacao.descricao, valor=movimentacao.valor, tipo=movimentacao.tipo, categoria=movimentacao.categoria)
     db.add(movimentacao_db)
     db.commit()
     db.refresh(movimentacao_db)
@@ -71,9 +81,6 @@ def post_movimentacao(movimentacao: Movimentacao, credentials = Depends(autentic
 
 @app.put("/movimentacoes/{id}")
 def put_movimentacao(id: int, movimentacao: Movimentacao, credentials = Depends(autenticar), db = Depends(session_db)):
-    tipo = movimentacao.tipo.strip().lower()
-    if tipo not in ["receita", "despesa"]:
-        raise HTTPException(status_code=400, detail="Tipo deve ser 'receita' ou 'despesa'")
     movimentacao_db = db.query(MovimentacaoDB).filter(MovimentacaoDB.id == id).first()
     if not movimentacao_db:
         raise HTTPException(status_code=404, detail="Movimentação não encontrada")

@@ -1,1 +1,27 @@
+# Variáveis de ambiente
 .env
+.env.*
+
+# Ambientes virtuais
+.venv/
+venv/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+
+# Bancos de dados locais
+*.db
+*.sqlite3
+
+# Cache de testes
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Arquivos de IDE
+.vscode/
+.idea/
+
+# Arquivos temporários
+*.log
